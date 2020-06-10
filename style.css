@@ -1,0 +1,16 @@
+.wcd-login-form.align-center {
+  text-align: center;
+}
+
+.wcd-login-form.align-right {
+  text-align: right;
+}
+
+.wcd-login-form.label-top label {
+  display: block;
+}
+
+.wcd-login-form.reset-disabled .lost-password {
+  display: none;
+}
+/*# sourceMappingURL=style.css.map */

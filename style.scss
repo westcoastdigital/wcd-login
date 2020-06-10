@@ -1,0 +1,18 @@
+.wcd-login-form {
+    &.align-center {
+        text-align: center;
+    }
+    &.align-right {
+        text-align: right;
+    }
+    &.label-top {
+        label {
+            display: block;
+        }
+    }
+    &.reset-disabled {
+        .lost-password {
+            display: none;
+        }
+    }
+}

@@ -7,7 +7,7 @@ if (!defined('ABSPATH') || !is_main_site()) {
 Plugin Name: WCD Login
 Plugin URI: https://github.com.au/wcd-login
 Description: Add custom login page support.
-Version: 1.0.0
+Version: 1.0.1
 Author: West Coast Digital
 Author URI: https://westcoastdigital.com.au
 Contributors: westcoastdigital
@@ -383,7 +383,7 @@ function wcd_add_lost_password_link()
     $lost_password_link = $custom_login_options['lost_password_link']; // Lost Password Link
 
     if ($lost_password_link) {
-        return '<a href="/wp-login.php?action=lostpassword">' . $lost_password_label . '</a>';
+        return '<a class="lost-password" href="/wp-login.php?action=lostpassword">' . $lost_password_label . '</a>';
     }
 
 }
@@ -430,6 +430,7 @@ function wcd_logout_redirect()
 }
 add_action('wp_logout', 'wcd_logout_redirect');
 
+/** Enqueue admin scripts */
 function wcd_select2_enqueue()
 {
     wp_enqueue_style('select2', plugin_dir_url(__FILE__) . '/select/css/select2.min.css');
@@ -437,3 +438,28 @@ function wcd_select2_enqueue()
     wp_enqueue_script('wcd-custom-login', plugin_dir_url(__FILE__) . '/script.js', array('jquery', 'select2'));
 }
 add_action('admin_enqueue_scripts', 'wcd_select2_enqueue');
+
+/** Add settings link to plugin */
+function wcd_settings_link($links)
+{
+    $settings_link = '<a href="themes.php?page=custom-login">' . __('Settings', 'wcd') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
+$plugin = plugin_basename(__FILE__);
+add_filter("plugin_action_links_$plugin", 'wcd_settings_link');
+
+/** Elementor form widget */
+function wcd_register_elementor_widgets()
+{
+    if (defined('ELEMENTOR_PATH') && class_exists('Elementor\Widget_Base')) {
+        require_once plugin_dir_path( __FILE__ ) . '/elementor-login.php';
+    }
+}
+add_action('elementor/widgets/widgets_registered', 'wcd_register_elementor_widgets');
+
+// Enqueue the elementor styles
+function wcd_elementor_styles() {
+    wp_enqueue_style( 'wcd-login', plugin_dir_url(__FILE__) . '/style.css' );
+}
+add_action( 'elementor/frontend/after_enqueue_styles', 'wcd_elementor_styles' );
