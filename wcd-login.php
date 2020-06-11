@@ -7,7 +7,7 @@ if (!defined('ABSPATH') || !is_main_site()) {
 Plugin Name: WCD Login
 Plugin URI: https://github.com.au/wcd-login
 Description: Add custom login page support.
-Version: 1.0.1
+Version: 1.0.2
 Author: West Coast Digital
 Author URI: https://westcoastdigital.com.au
 Contributors: westcoastdigital
@@ -41,19 +41,21 @@ class WCDCustomLogin
     public function custom_login_create_admin_page()
     {
         $this->custom_login_options = get_option('custom_login_option_name');?>
-
 		<div class="wrap">
-			<h2>Custom Login</h2>
+			<h2><?php echo __('Custom Login', 'wcd'); ?></h2>
 			<p></p>
 			<?php settings_errors();?>
             <div id="main" style="width: 70%; min-width: 350px; float: left;">
-			<form method="post" action="options.php">
-				<?php
+
+            <div id="wcd_form_tab" class="tabcontent">
+                <form method="post" action="options.php">
+                    <?php
 settings_fields('custom_login_option_group');
         do_settings_sections('custom-login-admin');
         submit_button();
         ?>
-            </form>
+                </form>
+            </div>
             </div>
             <div id="sidebar" style="width: 28%; float: right; min-width: 150px; background: #fff; border: 1px solid #999; padding: 6px">
 			<h3><?php _e('Shortcode', 'wcd');?></h3>
@@ -89,7 +91,7 @@ settings_fields('custom_login_option_group');
 
         add_settings_section(
             'custom_login_setting_section', // id
-            __('Settings', 'wcd'), // title
+            __('Form Settings', 'wcd'), // title
             array($this, 'custom_login_section_info'), // callback
             'custom-login-admin' // page
         );
@@ -174,6 +176,14 @@ settings_fields('custom_login_option_group');
             'custom_login_setting_section' // section
         );
 
+        add_settings_field(
+            'logo_image', // id
+            __('Logo', 'wcd'), // title
+            array($this, 'logo_image_callback'), // callback
+            'custom-login-settings', // page
+            'custom_login_template_setting_section' // section
+        );
+
     }
 
     public function custom_login_sanitize($input)
@@ -232,6 +242,14 @@ settings_fields('custom_login_option_group');
         printf(
             '<input placeholder="' . __('Username or Email Address', 'wcd') . '" class="regular-text" type="text" name="custom_login_option_name[username_label]" id="username_label" value="%s">',
             isset($this->custom_login_options['username_label']) ? esc_attr($this->custom_login_options['username_label']) : ''
+        );
+    }
+
+    public function logo_image_callback()
+    {
+        printf(
+            '<input type="file" name="logo" />',
+            '<button class="button wcd-logo-upload">Upload</button>',
         );
     }
 
@@ -453,13 +471,272 @@ add_filter("plugin_action_links_$plugin", 'wcd_settings_link');
 function wcd_register_elementor_widgets()
 {
     if (defined('ELEMENTOR_PATH') && class_exists('Elementor\Widget_Base')) {
-        require_once plugin_dir_path( __FILE__ ) . '/elementor-login.php';
+        require_once plugin_dir_path(__FILE__) . '/elementor-login.php';
     }
 }
 add_action('elementor/widgets/widgets_registered', 'wcd_register_elementor_widgets');
 
 // Enqueue the elementor styles
-function wcd_elementor_styles() {
-    wp_enqueue_style( 'wcd-login', plugin_dir_url(__FILE__) . '/style.css' );
+function wcd_elementor_styles()
+{
+    wp_enqueue_style('wcd-login', plugin_dir_url(__FILE__) . '/style.css');
 }
-add_action( 'elementor/frontend/after_enqueue_styles', 'wcd_elementor_styles' );
+add_action('elementor/frontend/after_enqueue_styles', 'wcd_elementor_styles');
+
+class WcdLoginPageTemplates
+{
+
+    /**
+     * A reference to an instance of this class.
+     */
+    private static $instance;
+
+    /**
+     * The array of templates that this plugin tracks.
+     */
+    protected $templates;
+
+    /**
+     * Returns an instance of this class.
+     */
+    public static function get_instance()
+    {
+
+        if (null == self::$instance) {
+            self::$instance = new WcdLoginPageTemplates();
+        }
+
+        return self::$instance;
+
+    }
+
+    /**
+     * Initializes the plugin by setting filters and administration functions.
+     */
+    private function __construct()
+    {
+
+        $this->templates = array();
+
+        // Add a filter to the attributes metabox to inject template into the cache.
+        if (version_compare(floatval(get_bloginfo('version')), '4.7', '<')) {
+
+            // 4.6 and older
+            add_filter(
+                'page_attributes_dropdown_pages_args',
+                array($this, 'register_project_templates')
+            );
+
+        } else {
+
+            // Add a filter to the wp 4.7 version attributes metabox
+            add_filter(
+                'theme_page_templates', array($this, 'add_new_template')
+            );
+
+        }
+
+        // Add a filter to the save post to inject out template into the page cache
+        add_filter(
+            'wp_insert_post_data',
+            array($this, 'register_project_templates')
+        );
+
+        // Add a filter to the template include to determine if the page has our
+        // template assigned and return it's path
+        add_filter(
+            'template_include',
+            array($this, 'view_project_template')
+        );
+
+        // Add your templates to this array.
+        $this->templates = array(
+            'login-template.php' => __('WCD Login', 'wcd'),
+        );
+
+    }
+
+    /**
+     * Adds our template to the page dropdown for v4.7+
+     *
+     */
+    public function add_new_template($posts_templates)
+    {
+        $posts_templates = array_merge($posts_templates, $this->templates);
+        return $posts_templates;
+    }
+
+    /**
+     * Adds our template to the pages cache in order to trick WordPress
+     * into thinking the template file exists where it doens't really exist.
+     */
+    public function register_project_templates($atts)
+    {
+
+        // Create the key used for the themes cache
+        $cache_key = 'page_templates-' . md5(get_theme_root() . '/' . get_stylesheet());
+
+        // Retrieve the cache list.
+        // If it doesn't exist, or it's empty prepare an array
+        $templates = wp_get_theme()->get_page_templates();
+        if (empty($templates)) {
+            $templates = array();
+        }
+
+        // New cache, therefore remove the old one
+        wp_cache_delete($cache_key, 'themes');
+
+        // Now add our template to the list of templates by merging our templates
+        // with the existing templates array from the cache.
+        $templates = array_merge($templates, $this->templates);
+
+        // Add the modified cache to allow WordPress to pick it up for listing
+        // available templates
+        wp_cache_add($cache_key, $templates, 'themes', 1800);
+
+        return $atts;
+
+    }
+
+    /**
+     * Checks if the template is assigned to the page
+     */
+    public function view_project_template($template)
+    {
+
+        // Get global post
+        global $post;
+
+        // Return template if post is empty
+        if (!$post) {
+            return $template;
+        }
+
+        // Return default template if we don't have a custom one defined
+        if (!isset($this->templates[get_post_meta(
+            $post->ID, '_wp_page_template', true
+        )])) {
+            return $template;
+        }
+
+        $file = plugin_dir_path(__FILE__) . get_post_meta(
+            $post->ID, '_wp_page_template', true
+        );
+
+        // Just to be safe, we check if the file exist first
+        if (file_exists($file)) {
+            return $file;
+        } else {
+            echo $file;
+        }
+
+        // Return template
+        return $template;
+
+    }
+
+}
+add_action('plugins_loaded', array('WcdLoginPageTemplates', 'get_instance'));
+
+function wcd_login_customize_register($wp_customize)
+{
+    class WP_Customize_Range_Control extends WP_Customize_Control
+    {
+        public $type = 'custom_range';
+        public function enqueue()
+        {
+            wp_enqueue_script(
+                'cs-range-control',
+                plugin_dir_url(__FILE__) . 'range-control.js',
+                array('jquery'),
+                false,
+                true
+            );
+        }
+        public function render_content()
+        {
+            ?>
+        <label>
+            <?php if (!empty($this->label)): ?>
+                <span class="customize-control-title"><?php echo esc_html($this->label); ?></span>
+            <?php endif;?>
+            <div class="cs-range-value"><?php echo esc_attr($this->value()); ?>%</div>
+            <input data-input-type="range" type="range" <?php $this->input_attrs();?> value="<?php echo esc_attr($this->value()); ?>" <?php $this->link();?> />
+            <?php if (!empty($this->description)): ?>
+                <span class="description customize-control-description"><?php echo $this->description; ?></span>
+            <?php endif;?>
+        </label>
+        <?php
+}
+    }
+
+    $wp_customize->add_section('wcd_login', array(
+        "title" => 'Login Template',
+        "priority" => 28,
+        "description" => __('Update settings for the default login template.', 'wcd'),
+    ));
+    $wp_customize->add_setting('wcd_custom_logo', array(
+        'default' => '',
+        'type' => 'theme_mod',
+        'capability' => 'edit_theme_options',
+    ));
+    $wp_customize->add_control(new WP_Customize_Image_Control($wp_customize, 'wcd_custom_logo', array(
+        'label' => __('Custom Logo', 'wcd'),
+        'section' => 'wcd_login',
+        'settings' => 'wcd_custom_logo',
+    ))
+    );
+    $wp_customize->add_setting('wcd_login_background', array(
+        'default' => '#03132b',
+        'type' => 'theme_mod',
+        'capability' => 'edit_theme_options',
+    ));
+    $wp_customize->add_control(
+        new WP_Customize_Color_Control(
+            $wp_customize,
+            'wcd_login_background',
+            array(
+                'label' => __('Background Color', 'wcd'),
+                'section' => 'wcd_login',
+                'settings' => 'wcd_login_background',
+            ))
+    );
+    $wp_customize->add_setting('wcd_login_overlay', array(
+        'default' => '#000',
+        'type' => 'theme_mod',
+        'capability' => 'edit_theme_options',
+    ));
+    $wp_customize->add_control(
+        new WP_Customize_Color_Control(
+            $wp_customize,
+            'wcd_login_overlay',
+            array(
+                'label' => __('Overlay Color', 'wcd'),
+                'section' => 'wcd_login',
+                'settings' => 'wcd_login_overlay',
+            ))
+    );
+
+    $wp_customize->add_setting('wcd_login_opacity', array(
+        'default' => '50',
+        'type' => 'theme_mod',
+        'capability' => 'edit_theme_options',
+    ));
+    $wp_customize->add_control(
+        new WP_Customize_Range_Control(
+            $wp_customize,
+            'wcd_login_opacity',
+            array(
+                'label' => __('Overlay Opacity', 'wcd'),
+                'section' => 'wcd_login',
+                'settings' => 'wcd_login_opacity',
+                'description' => __(''),
+                'input_attrs' => array(
+                    'min' => 0,
+                    'max' => 100,
+                ),
+            )
+        )
+    );
+}
+add_action('customize_register', 'wcd_login_customize_register');

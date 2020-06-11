@@ -13,4 +13,101 @@
 .wcd-login-form.reset-disabled .lost-password {
   display: none;
 }
+
+.login-page-wrapper {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 30% auto;
+      grid-template-columns: 30% auto;
+  min-height: 100vh;
+}
+
+.login-page-wrapper .left-column {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  padding: 4rem;
+  position: relative;
+}
+
+.login-page-wrapper .left-column .overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.login-page-wrapper .left-column .logo {
+  position: relative;
+  z-index: 10;
+}
+
+.login-page-wrapper .left-column .logo h1 {
+  color: #fff;
+  font-size: 2rem;
+}
+
+.login-page-wrapper .left-column .logo img {
+  height: 4rem;
+  width: auto;
+}
+
+.login-page-wrapper .right-column {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: column;
+      -ms-flex-pack: column;
+          justify-content: column;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+}
+
+.login-page-wrapper .right-column .form-wrapper {
+  background: #f2f4f6;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  width: 50%;
+}
+
+.login-page-wrapper .right-column .form-wrapper #loginform {
+  background: none;
+}
+
+.login-page-wrapper .right-column .form-wrapper #loginform .lost-password {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+@media screen and (max-width: 768px) {
+  .login-page-wrapper {
+    -ms-grid-rows: 25% auto;
+        grid-template-rows: 25% auto;
+    -ms-grid-columns: 100%;
+        grid-template-columns: 100%;
+  }
+  .login-page-wrapper .left-column {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-pack: column;
+        -ms-flex-pack: column;
+            justify-content: column;
+    -webkit-box-align: center;
+        -ms-flex-align: center;
+            align-items: center;
+    -webkit-box-pack: center;
+        -ms-flex-pack: center;
+            justify-content: center;
+  }
+  .login-page-wrapper .right-column .form-wrapper {
+    width: 75%;
+  }
+}
 /*# sourceMappingURL=style.css.map */
