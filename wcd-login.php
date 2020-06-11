@@ -7,7 +7,7 @@ if (!defined('ABSPATH') || !is_main_site()) {
 Plugin Name: WCD Login
 Plugin URI: https://github.com.au/wcd-login
 Description: Add custom login page support.
-Version: 1.0.3
+Version: 1.0.4
 Author: West Coast Digital
 Author URI: https://westcoastdigital.com.au
 Contributors: westcoastdigital
